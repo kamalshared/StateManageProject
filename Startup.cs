@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +24,19 @@ namespace StateManageProject
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllersWithViews();
+            #region Make Session store as Cookie based
+            services.AddDistributedMemoryCache();
+            services.AddSession(options =>
+            {
+                options.Cookie.Name = "cookieName";
+                options.Cookie.HttpOnly = true;
+                options.IdleTimeout = TimeSpan.FromMinutes(1);
+                options.Cookie.IsEssential = true;
+
+            });
+            #endregion
+
+            services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -46,12 +59,29 @@ namespace StateManageProject
 
             app.UseAuthorization();
 
-            app.UseEndpoints(endpoints =>
+            #region Enable Session 
+            app.UseSession();
+            #endregion
+
+            //app.UseEndpoints(endpoints =>
+            //{
+            //    endpoints.MapControllerRoute(
+            //        name: "default",
+            //        pattern: "{controller=Home}/{action=Index}/{id?}");
+            //    endpoints.MapRazorPages();
+            //});
+
+            #region Enable HttpContesxt.Item 
+            
+            app.UseItemDelegate();
+            app.Use(async (requst, next) =>
             {
-                endpoints.MapControllerRoute(
-                    name: "default",
-                    pattern: "{controller=Home}/{action=Index}/{id?}");
+                await requst.Response.WriteAsync("Hello" + requst.Items[Delegate1.MiddleWareSecret]);
+                await next();
             });
+
+            #endregion
+
         }
     }
 }
